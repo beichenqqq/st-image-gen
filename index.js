@@ -6,6 +6,57 @@
     function load(){try{var r=localStorage.getItem('stig_cfg');if(r){var o=JSON.parse(r);for(var k in o)if(o.hasOwnProperty(k))S[k]=o[k];}}catch(e){}}
     function save(){try{localStorage.setItem('stig_cfg',JSON.stringify(S));}catch(e){}}
     function esc(s){return(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+    function sleep(ms){return new Promise(function(r){setTimeout(r,ms);})}
+    function b64(blob){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){var s=r.result;res(s.substring(s.indexOf(',')+1));};r.onerror=rej;r.readAsDataURL(blob);})}
+    function q(s){return document.querySelector(s)}
+    function qa(s){return document.querySelectorAll(s)}
+
+    async function callNovelAI(p){var b={input:p,model:S.novelaiModel,parameters:{width:S.width,height:S.height,scale:S.scale,sampler:'k_euler_ancestral',steps:S.steps,n_samples:1,uc:'lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry',ucPreset:0,qualityToggle:true,sm:true,sm_dyn:false}};var r=await fetch('https://api.novelai.net/ai/generate-image',{method:'POST',headers:{'Authorization':'Bearer '+S.novelaiApiKey,'Content-Type':'application/json'},body:JSON.stringify(b)});if(!r.ok)throw new Error('NovelAI '+r.status);var ct=(r.headers.get('content-type')||'');if(ct.indexOf('json')>=0){var d=await r.json();if(d.data)return d.data;if(Array.isArray(d)&&d[0])return d[0];throw new Error('NAI format error');}return b64(await r.blob());}
+    async function callSD(p){var url=S.sdEndpoint.replace(/\\+$/,'')+'/sdapi/v1/txt2img';var r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p,negative_prompt:'lowres, bad anatomy, bad hands, text, error, missing fingers, cropped, worst quality, jpeg artifacts, signature, watermark, blurry',steps:S.steps,width:S.width,height:S.height,cfg_scale:7,sampler_index:'Euler a',batch_size:1,n_iter:1})});if(!r.ok)throw new Error('SD '+r.status);var d=await r.json();if(d.images&&d.images[0])return d.images[0];throw new Error('SD no img');}
+    function injectPrompt(obj,p){if(typeof obj==='string')return obj.split('{{prompt}}').join(p);if(Array.isArray(obj)){for(var i=0;i<obj.length;i++)obj[i]=injectPrompt(obj[i],p);return obj;}if(obj&&typeof obj==='object'){for(var k in obj){if(obj.hasOwnProperty(k)){if(k==='inputs'&&obj.class_type==='CLIPTextEncode')obj.inputs.text=p;else obj[k]=injectPrompt(obj[k],p);}}}return obj;}
+    async function callComfyUI(p){var ep=S.comfyuiEndpoint.replace(/\\+$/,'');var wf;try{wf=JSON.parse(S.comfyuiWorkflow);}catch(e){throw new Error('WF: '+e.message);}injectPrompt(wf,p);var sr=await fetch(ep+'/prompt',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:wf})});if(!sr.ok)throw new Error('CF '+sr.status);var pid=(await sr.json()).prompt_id;for(var i=0;i<120;i++){await sleep(2000);var hr=await fetch(ep+'/history/'+pid);if(!hr.ok)continue;var hist=await hr.json();var outs=hist[pid]&&hist[pid].outputs;if(!outs)continue;var keys=Object.keys(outs);for(var j=0;j<keys.length;j++){var imgs=outs[keys[j]]&&outs[keys[j]].images;if(imgs&&imgs[0]){var img=imgs[0];var vr=await fetch(ep+'/view?filename='+encodeURIComponent(img.filename)+'&subfolder='+encodeURIComponent(img.subfolder||'')+'&type='+encodeURIComponent(img.type||'output'));if(vr.ok)return b64(await vr.blob());}}}throw new Error('CF timeout');}
+    var TAG_RE = /<image>\s*image###([\s\S]+?)###\s*<\/image>/gi;
+    function scanMessage(el){
+        var id=el.getAttribute('data-message-id')||el.innerText.substring(0,80);
+        if(processed.has(id))return;processed.add(id);
+        var text=el.innerText||el.textContent||'';
+        TAG_RE.lastIndex=0;var m;
+        while((m=TAG_RE.exec(text))!==null){var p=m[1].trim();if(p&&S.autoGenerate)generateImage(p,el);}
+    }
+    function scanAll(){var els=qa('.mes, .message, [data-message-id]');for(var i=0;i<els.length;i++)scanMessage(els[i]);}
+    function startObserver(){
+        var target=q('#chat_messages, .chat-container, .messages, #message-container')||document.body;
+        var obs=new MutationObserver(function(muts){
+            for(var m=0;m<muts.length;m++){var nodes=muts[m].addedNodes;
+                for(var n=0;n<nodes.length;n++){var node=nodes[n];
+                    if(node.nodeType!==1)continue;
+                    if(node.matches&&node.matches('.mes, .message, [data-message-id]'))scanMessage(node);
+                    if(node.querySelectorAll){var sub=node.querySelectorAll('.mes, .message, [data-message-id]');for(var s=0;s<sub.length;s++)scanMessage(sub[s]);}}}
+        });
+        obs.observe(target,{childList:true,subtree:true});
+    }
+    async function generateImage(prompt, msgEl){
+        if(!S.enabled||!prompt.trim())return;
+        if(S.nsfw&&prompt.toLowerCase().indexOf('nsfw')<0)prompt='nsfw, '+prompt;
+        var c=document.createElement('div');
+        c.style.cssText='margin:8px 0;text-align:center';
+        c.innerHTML='<div style=\"padding:20px;color:#888\">[\u751f\u6210\u4e2d...]</div>';
+        msgEl.appendChild(c);
+        try{
+            var b;
+            if(S.engine==='novelai')b=await callNovelAI(prompt);
+            else if(S.engine==='sd')b=await callSD(prompt);
+            else if(S.engine==='comfyui')b=await callComfyUI(prompt);
+            else throw new Error('\u672a\u77e5\u5f15\u64ce');
+            var img=document.createElement('img');
+            img.src='data:image/png;base64,'+b;
+            img.style.cssText='max-width:100%;max-height:300px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.3)';
+            c.innerHTML='';c.appendChild(img);
+        }catch(err){
+            c.innerHTML='<div style=\"padding:10px 14px;background:rgba(255,60,60,0.1);border:1px solid rgba(255,60,60,0.3);border-radius:8px;color:#f66;font-size:13px\">[\u9519\u8bef] '+err.message.replace(/</g,'&lt;')+'</div>';
+            console.error('[ST-IG]',err);
+        }
+    }
     function makePanel(){
         var p=document.createElement('div');
         p.id='stig-panel';
@@ -77,7 +128,7 @@
             var d=document.createElement('div');d.className='mes';
             var c=document.querySelector('#chat_messages,.chat-container,.messages')||document.body;
             c.appendChild(d);
-            d.innerHTML='<div style="padding:10px;color:#888">[ST-IG loaded. Click IG button to configure]</div>';
+            generateImage('1girl, white hair, red eyes, smile, school uniform, standing, outdoors, cherry blossoms', d);
         };
     }
     function makeFAB(){
