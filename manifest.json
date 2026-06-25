@@ -1,12 +1,12 @@
 {
-  "display_name": "AI ????",
+  "display_name": "AI Image Gen",
   "loading_order": 10,
   "requires": [],
   "optional": [],
   "js": "index.js",
   "css": "style.css",
   "author": "Codex",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "homePage": "",
   "auto_update": false
 }
