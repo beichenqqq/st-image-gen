@@ -1,4 +1,4 @@
-// SillyTavern Extension: AI Image Gen
+// SillyTavern Extension: AI 插图生成
 (function() {
     'use strict';
     console.log('[ST-IG] init');
@@ -11,16 +11,16 @@
         p.id='stig-panel';
         p.style.cssText='position:fixed;top:60px;right:20px;width:340px;max-height:80vh;overflow-y:auto;background:#1a1a2e;border:1px solid #444;border-radius:12px;z-index:99999;color:#ddd;font-size:14px;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:none';
         var h='';
-        h+='<div style="display:flex;align-items:center;padding:10px 14px;font-weight:700;border-bottom:1px solid #444"><span style="flex:1">AI Image Gen</span><span id="stig-close" style="cursor:pointer;opacity:.6">X</span></div>';
+        h+='<div style="display:flex;align-items:center;padding:10px 14px;font-weight:700;border-bottom:1px solid #444"><span style="flex:1">AI 插图生成</span><span id="stig-close" style="cursor:pointer;opacity:.6">X</span></div>';
         h+='<div style="padding:8px 14px">';
-        h+='<label style="display:flex;align-items:center;justify-content:space-between;padding:4px 0"><span>Enable</span><input type="checkbox" id="stig-en"'+(S.enabled?' checked':'')+'></label>';
-        h+='<label style="display:flex;align-items:center;justify-content:space-between;padding:4px 0"><span>Engine</span><select id="stig-eng">';
+        h+='<label style="display:flex;align-items:center;justify-content:space-between;padding:4px 0"><span>启用</span><input type="checkbox" id="stig-en"'+(S.enabled?' checked':'')+'></label>';
+        h+='<label style="display:flex;align-items:center;justify-content:space-between;padding:4px 0"><span>引擎</span><select id="stig-eng">';
         h+='<option value="novelai"'+(S.engine==='novelai'?' selected':'')+'>NovelAI</option>';
         h+='<option value="sd"'+(S.engine==='sd'?' selected':'')+'>SD</option>';
         h+='<option value="comfyui"'+(S.engine==='comfyui'?' selected':'')+'>ComfyUI</option></select></label>';
         h+='<div id="stig-nai-sec"'+(S.engine==='novelai'?'':' style="display:none"')+' style="margin:4px 0;padding:6px;border:1px solid rgba(255,255,255,0.1);border-radius:6px">';
-        h+='<div style="font-size:11px;font-weight:600;opacity:.5;margin-bottom:4px">NOVELAI</div>';
-        h+='<input type="password" id="stig-nai-key" placeholder="API Key" value="'+esc(S.novelaiApiKey)+'" style="width:100%;margin:2px 0">';
+        h+='<div style="font-size:11px;font-weight:600;opacity:.5;margin-bottom:4px">NovelAI 设置</div>';
+        h+='<input type="password" id="stig-nai-key" placeholder="API 密钥" value="'+esc(S.novelaiApiKey)+'" style="width:100%;margin:2px 0">';
         h+='<select id="stig-nai-mdl" style="width:100%;margin:2px 0"><option value="nai3"'+(S.novelaiModel==='nai3'?' selected':'')+'>NAI3</option><option value="nai4"'+(S.novelaiModel==='nai4'?' selected':'')+'>NAI4</option></select></div>';
         h+='<div id="stig-sd-sec"'+(S.engine==='sd'?'':' style="display:none"')+' style="margin:4px 0;padding:6px;border:1px solid rgba(255,255,255,0.1);border-radius:6px">';
         h+='<div style="font-size:11px;font-weight:600;opacity:.5;margin-bottom:4px">SD</div>';
@@ -34,9 +34,9 @@
         h+='<input type="number" id="stig-h" value="'+S.height+'" style="width:100%">';
         h+='<input type="number" id="stig-st" value="'+S.steps+'" style="width:100%">';
         h+='<input type="number" id="stig-sc" value="'+S.scale+'" style="width:100%"></div>';
-        h+='<label style="display:flex;align-items:center;justify-content:space-between;padding:4px 0"><span>NSFW</span><input type="checkbox" id="stig-nsfw"'+(S.nsfw?' checked':'')+'></label>';
-        h+='<label style="display:flex;align-items:center;justify-content:space-between;padding:4px 0"><span>Auto</span><input type="checkbox" id="stig-auto"'+(S.autoGenerate?' checked':'')+'></label>';
-        h+='<div style="display:flex;gap:6px;padding:6px 0"><button id="stig-save" class="menu_button" style="flex:1">Save</button><button id="stig-test" class="menu_button" style="flex:1">Test</button></div>';
+        h+='<label style="display:flex;align-items:center;justify-content:space-between;padding:4px 0"><span>允许 NSFW</span><input type="checkbox" id="stig-nsfw"'+(S.nsfw?' checked':'')+'></label>';
+        h+='<label style="display:flex;align-items:center;justify-content:space-between;padding:4px 0"><span>自动生图</span><input type="checkbox" id="stig-auto"'+(S.autoGenerate?' checked':'')+'></label>';
+        h+='<div style="display:flex;gap:6px;padding:6px 0"><button id="stig-save" class="menu_button" style="flex:1">保存</button><button id="stig-test" class="menu_button" style="flex:1">测试</button></div>';
         h+='</div>';
         p.innerHTML=h;
         document.body.appendChild(p);
